@@ -244,6 +244,65 @@ void SoftwareRendererImp::rasterize_line( float x0, float y0,
 
   // Task 2: 
   // Implement line rasterization
+  // 
+    //检查边界
+    if (x0 < 0 || x0 >= target_w) return;
+    if (y0 < 0 || y0 >= target_h) return;
+    if (x1 < 0 || x1 >= target_w) return;
+    if (y1 < 0 || y1 >= target_h) return;
+
+    bool isSteep = abs(y1 - y0) > abs(x1 - x0);//斜率是否大于1/小于-1
+    if (isSteep) {//通过交换xy坐标，将斜率变为[-1，1]之间
+        swap(x0, y0);
+        swap(x1, y1);
+    }
+
+    if (x0 > x1) {//分别交换x和y，统一绘制x递增的直线
+        swap(x0, x1);
+        swap(y0, y1);
+    }
+    // 至此，只有斜率[-1,1]之间的直线需要绘制
+    
+    //找到最近的像素点
+    int sx0 = (int)floor(x0);
+    int sy0 = (int)floor(y0);
+    int sx1 = (int)floor(x1);
+    int sy1 = (int)floor(y1);
+    //cout << target_w << " " << target_h << "(" << sx0 << "," << sy0 << " (" << sx1 << "," << sy1 << ")" << endl;
+
+    float dx = sx1 - sx0;
+    float dy = abs(sy1 - sy0);
+    float m = dy / dx;
+    float error = 0;// 记录实际y和绘制的y之间的差距[-0.5, 0.5]
+
+    //当前绘制的x，y坐标
+    int curx = sx0;
+    int cury = sy0;
+    
+    int ystep = y0 < y1 ? 1 : -1;//y增长的步长
+
+    for (; curx <= sx1; curx++) {
+        //绘制当前点
+        if (!isSteep) {
+            render_target[4 * (curx + cury * target_w)] = (uint8_t)(color.r * 255);
+            render_target[4 * (curx + cury * target_w) + 1] = (uint8_t)(color.g * 255);
+            render_target[4 * (curx + cury * target_w) + 2] = (uint8_t)(color.b * 255);
+            render_target[4 * (curx + cury * target_w) + 3] = (uint8_t)(color.a * 255);
+        }
+        else {
+            render_target[4 * (cury + curx * target_w)] = (uint8_t)(color.r * 255);
+            render_target[4 * (cury + curx * target_w) + 1] = (uint8_t)(color.g * 255);
+            render_target[4 * (cury + curx * target_w) + 2] = (uint8_t)(color.b * 255);
+            render_target[4 * (cury + curx * target_w) + 3] = (uint8_t)(color.a * 255);
+        }
+        
+        error = error + m;//x每多1，误差就多m
+        if (error >= 0.5) {//误差大于一格的一半，y增加1，相应地误差减去1
+            cury += ystep;
+            error -= 1;
+        }
+    }
+    
 }
 
 void SoftwareRendererImp::rasterize_triangle( float x0, float y0,

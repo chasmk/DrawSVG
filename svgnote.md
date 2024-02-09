@@ -17,13 +17,19 @@
   - `draw_svg()`->`draw_element()`->`draw_point()`->`rasterize_point()`
   - 在`rasterize_point()`中将点的color填充到render_target相应的位置上
 
+# Task 1: Hardware Renderer
 
+- 调用opengl api即可
+- 参考https://nehe.gamedev.net/tutorial/lessons_01__05/22004/
 
+# Task 2 : Drawing Lines
 
-
-
-
-
+- 参考 
+  - http://www.cs.helsinki.fi/group/goa/mallinnus/lines/bresenh.html
+  - https://zh.wikipedia.org/zh-cn/%E5%B8%83%E9%9B%B7%E6%A3%AE%E6%BC%A2%E5%A7%86%E7%9B%B4%E7%B7%9A%E6%BC%94%E7%AE%97%E6%B3%95
+- 使用 Bresenham's algorithm
+  - 原始算法支持斜率0-1之间的直线绘制，每次x+1，然后根据error和m判断y是否+1（斜率[-1, 0] 时y是-1）
+  - 然后通过交换x y值 将x递减和斜率大于1和小于-1的情况统一到原始算法中
 
 
 
