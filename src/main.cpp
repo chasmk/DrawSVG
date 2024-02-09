@@ -89,6 +89,8 @@ int loadPath( DrawSVG* drawsvg, const char* path) {
 }
 
 int main( int argc, char** argv ) {
+  //D:\cmu462\DrawSVG\build\Debug\drawsvg.exe
+  std::cout << argv[0] << endl;
 
   // create viewer
   Viewer viewer = Viewer();
