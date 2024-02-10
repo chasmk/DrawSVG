@@ -311,6 +311,36 @@ void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
                                               Color color ) {
   // Task 3: 
   // Implement triangle rasterization
+    //先找到bbox边界，再遍历所有点并判断是否在三角形内
+    int minx = floor(min(x0, min(x1, x2)));
+    int miny = floor(min(y0, min(y1, y2)));
+    int maxx = floor(max(x0, max(x1, x2)));
+    int maxy = floor(max(y0, max(y1, y2)));
+
+    for (int i = miny; i <= maxy; i += 1) {
+        for (int j = minx; j <= maxx; j += 1) {
+            //三角形三条边的向量
+            Vector2D v01(x1 - x0, y1 - y0);
+            Vector2D v12(x2 - x1, y2 - y1);
+            Vector2D v20(x0 - x2, y0 - y2);
+            //测试点到三角形顶点的向量
+            Vector2D v0t(j + 0.5 - x0, i + 0.5 - y0);
+            Vector2D v1t(j + 0.5 - x1, i + 0.5 - y1);
+            Vector2D v2t(j + 0.5 - x2, i + 0.5 - y2);
+            //三个叉积值
+            double res1 = cross(v01, v0t);
+            double res2 = cross(v12, v1t);
+            double res3 = cross(v20, v2t);
+            
+            if (res1 >= 0 && res2 >= 0 && res3 >= 0 || res1 <= 0 && res2 <= 0 && res3 <= 0) {
+                //cout << j <<","<<i << res1 << " " << res2 << " " << res3 << endl;
+                render_target[4 * (j + i * target_w)] = (uint8_t)(color.r * 255);
+                render_target[4 * (j + i * target_w) + 1] = (uint8_t)(color.g * 255);
+                render_target[4 * (j + i * target_w) + 2] = (uint8_t)(color.b * 255);
+                render_target[4 * (j + i * target_w) + 3] = (uint8_t)(color.a * 255);
+            }
+        }
+    }
 
 }
 
