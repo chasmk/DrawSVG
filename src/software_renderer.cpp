@@ -44,8 +44,11 @@ void SoftwareRendererImp::set_sample_rate( size_t sample_rate ) {
 
   // Task 4: 
   // You may want to modify this for supersampling support
+  //if (target_h == 0 || target_w == 0) return;
   this->sample_rate = sample_rate;
-
+  delete[] this->supersample_target;
+  //cout << "set_sample_rate()\n";
+  this->supersample_target = new unsigned char[4 * target_w * target_h * sample_rate * sample_rate];
 }
 
 void SoftwareRendererImp::set_render_target( unsigned char* render_target,
@@ -57,6 +60,9 @@ void SoftwareRendererImp::set_render_target( unsigned char* render_target,
   this->target_w = width;
   this->target_h = height;
 
+  //delete[]supersample_target;
+  //supersample_target = new unsigned char[4 * target_w * target_h * sample_rate * sample_rate];
+  //cout << "set_render_target()\n";
 }
 
 void SoftwareRendererImp::draw_element( SVGElement* element ) {
@@ -222,6 +228,10 @@ void SoftwareRendererImp::draw_group( Group& group ) {
 
 void SoftwareRendererImp::rasterize_point( float x, float y, Color color ) {
 
+    if (sample_rate > 1) {
+        rasterize_point_supersample(x, y, color);
+        return;
+    }
   // fill in the nearest pixel
   int sx = (int) floor(x);
   int sy = (int) floor(y);
@@ -238,6 +248,27 @@ void SoftwareRendererImp::rasterize_point( float x, float y, Color color ) {
 
 }
 
+void SoftwareRendererImp::rasterize_point_supersample(float x, float y, Color color) {
+    // fill in the nearest pixel
+    int sx = (int)floor(x);
+    int sy = (int)floor(y);
+
+    // check bounds
+    if (sx < 0 || sx >= target_w) return;
+    if (sy < 0 || sy >= target_h) return;
+
+    for (int s = 0; s < sample_rate; s++) {//行
+        for (int t = 0; t < sample_rate; t++) {//列
+            supersample_target[4 * (sx * sample_rate + t + (sy * sample_rate + s) * target_w * sample_rate)] = (uint8_t)(color.r * 255);
+            supersample_target[4 * (sx * sample_rate + t + (sy * sample_rate + s) * target_w * sample_rate) + 1] = (uint8_t)(color.g * 255);
+            supersample_target[4 * (sx * sample_rate + t + (sy * sample_rate + s) * target_w * sample_rate) + 2] = (uint8_t)(color.b * 255);
+            supersample_target[4 * (sx * sample_rate + t + (sy * sample_rate + s) * target_w * sample_rate) + 3] = (uint8_t)(color.a * 255);
+        }
+    }
+    // fill sample - NOT doing alpha blending!
+    
+}
+
 void SoftwareRendererImp::rasterize_line( float x0, float y0,
                                           float x1, float y1,
                                           Color color) {
@@ -245,6 +276,10 @@ void SoftwareRendererImp::rasterize_line( float x0, float y0,
   // Task 2: 
   // Implement line rasterization
   // 
+    if (sample_rate > 1) {
+        rasterize_line_supersample(x0, y0, x1, y1, color);
+        return;
+    }
     //检查边界
     if (x0 < 0 || x0 >= target_w) return;
     if (y0 < 0 || y0 >= target_h) return;
@@ -305,12 +340,87 @@ void SoftwareRendererImp::rasterize_line( float x0, float y0,
     
 }
 
+void SoftwareRendererImp::rasterize_line_supersample(float x0, float y0,
+    float x1, float y1,
+    Color color) {
+    //检查边界
+    if (x0 < 0 || x0 >= target_w) return;
+    if (y0 < 0 || y0 >= target_h) return;
+    if (x1 < 0 || x1 >= target_w) return;
+    if (y1 < 0 || y1 >= target_h) return;
+
+    bool isSteep = abs(y1 - y0) > abs(x1 - x0);//斜率是否大于1/小于-1
+    if (isSteep) {//通过交换xy坐标，将斜率变为[-1，1]之间
+        swap(x0, y0);
+        swap(x1, y1);
+    }
+
+    if (x0 > x1) {//分别交换x和y，统一绘制x递增的直线
+        swap(x0, x1);
+        swap(y0, y1);
+    }
+    // 至此，只有斜率[-1,1]之间的直线需要绘制
+
+    //找到最近的像素点
+    int sx0 = (int)floor(x0);
+    int sy0 = (int)floor(y0);
+    int sx1 = (int)floor(x1);
+    int sy1 = (int)floor(y1);
+    //cout << target_w << " " << target_h << "(" << sx0 << "," << sy0 << " (" << sx1 << "," << sy1 << ")" << endl;
+
+    float dx = sx1 - sx0;
+    float dy = abs(sy1 - sy0);
+    float m = dy / dx;
+    float error = 0;// 记录实际y和绘制的y之间的差距[-0.5, 0.5]
+
+    //当前绘制的x，y坐标
+    int curx = sx0;
+    int cury = sy0;
+
+    int ystep = y0 < y1 ? 1 : -1;//y增长的步长
+
+    for (; curx <= sx1; curx++) {
+        //绘制当前点
+        if (!isSteep) {
+            for (int s = 0; s < sample_rate; s++) {//行
+                for (int t = 0; t < sample_rate; t++) {//列
+                    supersample_target[4 * (curx * sample_rate + t + (cury * sample_rate + s) * target_w * sample_rate)] = (uint8_t)(color.r * 255);
+                    supersample_target[4 * (curx * sample_rate + t + (cury * sample_rate + s) * target_w * sample_rate) + 1] = (uint8_t)(color.g * 255);
+                    supersample_target[4 * (curx * sample_rate + t + (cury * sample_rate + s) * target_w * sample_rate) + 2] = (uint8_t)(color.b * 255);
+                    supersample_target[4 * (curx * sample_rate + t + (cury * sample_rate + s) * target_w * sample_rate) + 3] = (uint8_t)(color.a * 255);
+                }
+            }
+        }
+        else {
+            for (int s = 0; s < sample_rate; s++) {//行
+                for (int t = 0; t < sample_rate; t++) {//列
+                    supersample_target[4 * (cury * sample_rate + t + (curx * sample_rate + s) * target_w * sample_rate)] = (uint8_t)(color.r * 255);
+                    supersample_target[4 * (cury * sample_rate + t + (curx * sample_rate + s) * target_w * sample_rate) + 1] = (uint8_t)(color.g * 255);
+                    supersample_target[4 * (cury * sample_rate + t + (curx * sample_rate + s) * target_w * sample_rate) + 2] = (uint8_t)(color.b * 255);
+                    supersample_target[4 * (cury * sample_rate + t + (curx * sample_rate + s) * target_w * sample_rate) + 3] = (uint8_t)(color.a * 255);
+                }
+            }
+        }
+
+        error = error + m;//x每多1，误差就多m
+        if (error >= 0.5) {//误差大于一格的一半，y增加1，相应地误差减去1
+            cury += ystep;
+            error -= 1;
+        }
+    }
+}
+
 void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
                                               float x1, float y1,
                                               float x2, float y2,
                                               Color color ) {
   // Task 3: 
   // Implement triangle rasterization
+    //超采样版本
+    if (sample_rate > 1) {
+        rasterize_triangle_supersample(x0, y0, x1, y1, x2, y2, color);
+        return;
+    }
     //先找到bbox边界，再遍历所有点并判断是否在三角形内
     int minx = floor(min(x0, min(x1, x2)));
     int miny = floor(min(y0, min(y1, y2)));
@@ -331,7 +441,7 @@ void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
             double res1 = cross(v01, v0t);
             double res2 = cross(v12, v1t);
             double res3 = cross(v20, v2t);
-            
+
             if (res1 >= 0 && res2 >= 0 && res3 >= 0 || res1 <= 0 && res2 <= 0 && res3 <= 0) {
                 //cout << j <<","<<i << res1 << " " << res2 << " " << res3 << endl;
                 render_target[4 * (j + i * target_w)] = (uint8_t)(color.r * 255);
@@ -342,6 +452,46 @@ void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
         }
     }
 
+}
+
+void SoftwareRendererImp::rasterize_triangle_supersample(float x0, float y0,
+    float x1, float y1,
+    float x2, float y2,
+    Color color)
+{
+    //先找到bbox边界，再遍历所有点并判断是否在三角形内
+    int minx = floor(min(x0, min(x1, x2)));
+    int miny = floor(min(y0, min(y1, y2)));
+    int maxx = ceil(max(x0, max(x1, x2)));
+    int maxy = ceil(max(y0, max(y1, y2)));
+
+    float step = 1.0 / sample_rate;//遍历的步长
+    float sstep = step / 2.0;//得到采样点位置的距离，
+    for (int si = miny*sample_rate; si < maxy * sample_rate; si += 1) {//遍历所有超采样点的超采样坐标
+        int i = si / sample_rate + (si % sample_rate) * step;//得到左上角实际位置
+        for (int sj = minx * sample_rate; sj < maxx * sample_rate; sj += 1) {
+            int j = sj / sample_rate + (sj % sample_rate) * step;//得到左上角实际位置
+            //三角形三条边的向量
+            Vector2D v01(x1 - x0, y1 - y0);
+            Vector2D v12(x2 - x1, y2 - y1);
+            Vector2D v20(x0 - x2, y0 - y2);
+            //测试点到三角形顶点的向量，这里取小方块中间为采样点
+            Vector2D v0t(j + sstep - x0, i + sstep - y0);
+            Vector2D v1t(j + sstep - x1, i + sstep - y1);
+            Vector2D v2t(j + sstep - x2, i + sstep - y2);
+            //三个叉积值
+            double res1 = cross(v01, v0t);
+            double res2 = cross(v12, v1t);
+            double res3 = cross(v20, v2t);
+
+            if (res1 >= 0 && res2 >= 0 && res3 >= 0 || res1 <= 0 && res2 <= 0 && res3 <= 0) {
+                supersample_target[4 * (sj + si * target_w * sample_rate)] = (uint8_t)(color.r * 255);
+                supersample_target[4 * (sj + si * target_w * sample_rate) + 1] = (uint8_t)(color.g * 255);
+                supersample_target[4 * (sj + si * target_w * sample_rate) + 2] = (uint8_t)(color.b * 255);
+                supersample_target[4 * (sj + si * target_w * sample_rate) + 3] = (uint8_t)(color.a * 255);
+            }
+        }
+    }
 }
 
 void SoftwareRendererImp::rasterize_image( float x0, float y0,
@@ -356,9 +506,35 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
 void SoftwareRendererImp::resolve( void ) {
 
   // Task 4: 
-  // Implement supersampling
+  // Implement supersampling执行重采样
   // You may also need to modify other functions marked with "Task 4".
-  return;
+    //return;
+    if (sample_rate <= 1) return;
+    int sample_num = sample_rate * sample_rate;//每个格子里有多少采样点
+    for (int i = 0; i < target_h; i++) {
+        for (int j = 0; j < target_w; j++) {//遍历原图所有像素点
+            Color color;
+            for (int s = 0; s < sample_rate; s++) {//行
+                for (int t = 0; t < sample_rate; t++) {//列
+                    color.r += supersample_target[4 * (j * sample_rate + t + i * target_w * sample_num + s * target_w * sample_rate)];
+                    color.g += supersample_target[1 + 4 * (j * sample_rate + t + i * target_w * sample_num + s * target_w * sample_rate)];
+                    color.b += supersample_target[2 + 4 * (j * sample_rate + t + i * target_w * sample_num + s * target_w * sample_rate)];
+                    color.a += supersample_target[3 + 4 * (j * sample_rate + t + i * target_w * sample_num + s * target_w * sample_rate)];
+                }
+            }
+            //做平均，unit-area box filter
+            color.r /= sample_num;
+            color.g /= sample_num;
+            color.b /= sample_num;
+            color.a /= sample_num;
+            //赋值给原图
+            render_target[4 * (j + i * target_w)] = (uint8_t)(color.r);
+            render_target[4 * (j + i * target_w) + 1] = (uint8_t)(color.g);
+            render_target[4 * (j + i * target_w) + 2] = (uint8_t)(color.b);
+            render_target[4 * (j + i * target_w) + 3] = (uint8_t)(color.a);
+        }
+    }
+
 
 }
 

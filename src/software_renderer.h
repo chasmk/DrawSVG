@@ -31,6 +31,7 @@ class SoftwareRenderer : public SVGRenderer {
   // Clear render target
   inline void clear_target() {
     memset(render_target, 255, 4 * target_w * target_h);
+    //memset(supersample_target, 255, 4 * target_w * target_h * sample_rate * sample_rate);
   }
 
   // Set texture sampler
@@ -111,19 +112,36 @@ class SoftwareRendererImp : public SoftwareRenderer {
 
   // Rasterization //
 
+  // Render target memory location
+  unsigned char* supersample_target = nullptr;
+
   // rasterize a point
   void rasterize_point( float x, float y, Color color );
+
+  // 超采样版 rasterize a point
+  void rasterize_point_supersample(float x, float y, Color color);
 
   // rasterize a line
   void rasterize_line( float x0, float y0,
                        float x1, float y1,
                        Color color);
 
+  // 超采样版 rasterize a line
+  void rasterize_line_supersample(  float x0, float y0,
+                                    float x1, float y1,
+                                    Color color);
+
   // rasterize a triangle
   void rasterize_triangle( float x0, float y0,
                            float x1, float y1,
                            float x2, float y2,
                            Color color );
+
+  // 超采样版 rasterize a triangle
+  void rasterize_triangle_supersample(float x0, float y0,
+      float x1, float y1,
+      float x2, float y2,
+      Color color);
 
   // rasterize an image
   void rasterize_image( float x0, float y0,
