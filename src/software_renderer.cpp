@@ -20,8 +20,11 @@ void SoftwareRendererImp::draw_svg( SVG& svg ) {
   transformation = svg_2_screen;
 
   // draw all elements
-  for ( size_t i = 0; i < svg.elements.size(); ++i ) {
+  for ( size_t i = 0; i < svg.elements.size(); ++i ) {//绘制element之前应用transform，然后再取消
+    transformation = transformation * svg.elements[i]->transform;
     draw_element(svg.elements[i]);
+    transformation =  transformation * svg.elements[i]->transform.inv();
+    //print(svg.elements[i]->transform);
   }
 
   // draw canvas outline
@@ -64,6 +67,15 @@ void SoftwareRendererImp::set_render_target( unsigned char* render_target,
   //supersample_target = new unsigned char[4 * target_w * target_h * sample_rate * sample_rate];
   //cout << "set_render_target()\n";
 }
+/*用不到了
+void ApplyTransformation(Polygon& polygon) {
+    for (int i = 0; i < polygon.points.size(); i++) {//对每个polygon的point应用transformation
+        Vector3D v(polygon.points[i].x, polygon.points[i].y, 1);
+        v = polygon.transform * v;
+        polygon.points[i].x = v.x / v.z;
+        polygon.points[i].y = v.y / v.z;
+    }
+}*/
 
 void SoftwareRendererImp::draw_element( SVGElement* element ) {
 
@@ -72,20 +84,29 @@ void SoftwareRendererImp::draw_element( SVGElement* element ) {
 
   switch(element->type) {
     case POINT:
+        //cout << "POINT\n";
       draw_point(static_cast<Point&>(*element));
       break;
     case LINE:
+        //cout << "LINE\n";
       draw_line(static_cast<Line&>(*element));
       break;
     case POLYLINE:
+        //cout << "POLYLINE\n";
       draw_polyline(static_cast<Polyline&>(*element));
       break;
     case RECT:
+        //cout << "RECT\n";
       draw_rect(static_cast<Rect&>(*element));
       break;
     case POLYGON:
-      draw_polygon(static_cast<Polygon&>(*element));
-      break;
+    {
+        //cout << "POLYGON\n";
+        Polygon& polygon = static_cast<Polygon&>(*element);
+        //ApplyTransformation(polygon);
+        draw_polygon(polygon);
+        break;
+    }
     case ELLIPSE:
       draw_ellipse(static_cast<Ellipse&>(*element));
       break;
@@ -93,7 +114,18 @@ void SoftwareRendererImp::draw_element( SVGElement* element ) {
       draw_image(static_cast<Image&>(*element));
       break;
     case GROUP:
-      draw_group(static_cast<Group&>(*element));
+    {
+        cout << "GROUP\n";
+        Group& group = static_cast<Group&>(*element);
+        //
+        for (size_t i = 0; i < group.elements.size(); ++i) {//对于group做额外的操作
+            transformation = transformation * group.elements[i]->transform;
+            draw_element(group.elements[i]);
+            transformation = transformation * group.elements[i]->transform.inv();
+        }
+        //draw_group(static_cast<Group&>(*element));//不调用这个，直接在这里处理
+        
+    }
       break;
     default:
       break;

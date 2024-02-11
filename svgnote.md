@@ -45,7 +45,13 @@
   - 这个task里主要是超采样的位置比较绕，需要仔细
   - 超采样数组`supersample_target`需要**放在Imp类**里，不能放在父类，否则另一个子类Ref类会报内存越界**错误**。
 
+# Task 5 : modeling变换和viewing变换
 
+## modeling transform
+
+- 每个SVG Element里都有一个transform矩阵，代表这个2D element的变换
+- 每次绘制前在全局的transformation矩阵 右乘 element矩阵，绘制完后再乘其逆矩阵撤销操作
+  - 绘制group类型的elements时需要额外应用transformation，因为它是嵌套操作
 
 
 

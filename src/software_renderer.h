@@ -83,6 +83,8 @@ class SoftwareRendererImp : public SoftwareRenderer {
 
   // Primitive Drawing //
 
+     bool bApplyTransformation = false;
+
   // Draws an SVG element
   void draw_element( SVGElement* element );
 
