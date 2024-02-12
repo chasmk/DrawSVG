@@ -3,6 +3,7 @@
 
 #include "CMU462.h"
 #include "svg.h"
+#include "iostream"
 
 namespace CMU462 {
 
@@ -17,6 +18,13 @@ class Viewport {
 
   inline void set_svg_2_norm( Matrix3x3 m ) {
     svg_2_norm = m;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            std::cout << svg_2_norm(i,j) << " ";
+        }
+        std::cout << std::endl; 
+    }
+    std::cout << std::endl;
   }
 
   // set viewbox to look at (centerX, centerY) in normalized svg coordinate space. vspan defines 

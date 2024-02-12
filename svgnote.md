@@ -53,9 +53,39 @@
 - 每次绘制前在全局的transformation矩阵 右乘 element矩阵，绘制完后再乘其逆矩阵撤销操作
   - 绘制group类型的elements时需要额外应用transformation，因为它是嵌套操作
 
+## viewing transform
 
+- 这个任务是实现大小 缩放**scale** 和 平移**translation**
 
+  - 三个参数`centerX`，`centerY`，`vspan`。前两个和平移有关代表中心位置，第三个和缩放有关代表显示的范围
 
+  - 需要调用`set_svg_2_norm()`来更新`svg_2_norm`矩阵
+
+  - 这个transform包括translation和scale，需要将SVG canvas坐标空间映射到标准化的设备坐标空间
+
+    - 左上角映射到(0, 0)，右下角映射到(1, 1)
+
+  - ```c++
+    Matrix3x3 m = Matrix3x3::identity();
+    
+      //设置平移(向右下)，0.5是移动一半，让center位于中心
+      m(0, 2) = 0.5 * (vspan - centerX) / vspan;
+      m(1, 2) = 0.5 * (vspan - centerY) / vspan;
+    
+      //设置缩放，缩小 vspan*2 倍，[0,0.5]之间
+      m(0, 0) = 0.5 / vspan;
+      m(1, 1) = 0.5 / vspan;
+    
+      set_svg_2_norm(m);
+    ```
+
+  - 
+
+- ★最终对svg里坐标的transformation矩阵如下
+  - `transformation` = `norm_screen` * `svg_norm` * `element_transform`
+  - 上面三个分别是projection变换，view视口变换，model模型变换
+  - 对svg中坐标u应用： `u` = `tansformation` * `u`
+  - 所以变换矩阵是从**最右边开始应用**的
 
 
 

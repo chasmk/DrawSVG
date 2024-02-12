@@ -62,7 +62,7 @@ void SoftwareRendererImp::set_render_target( unsigned char* render_target,
   this->render_target = render_target;
   this->target_w = width;
   this->target_h = height;
-
+  
   //delete[]supersample_target;
   //supersample_target = new unsigned char[4 * target_w * target_h * sample_rate * sample_rate];
   //cout << "set_render_target()\n";
@@ -115,7 +115,7 @@ void SoftwareRendererImp::draw_element( SVGElement* element ) {
       break;
     case GROUP:
     {
-        cout << "GROUP\n";
+        //cout << "GROUP\n";
         Group& group = static_cast<Group&>(*element);
         //
         for (size_t i = 0; i < group.elements.size(); ++i) {//对于group做额外的操作
@@ -566,7 +566,7 @@ void SoftwareRendererImp::resolve( void ) {
             render_target[4 * (j + i * target_w) + 3] = (uint8_t)(color.a);
         }
     }
-
+    cout << "w&h " << target_w << " " << target_h << endl;
 
 }
 
