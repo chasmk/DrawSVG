@@ -85,7 +85,17 @@ Color Sampler2DImp::sample_nearest(Texture& tex,
   // Task 6: Implement nearest neighbour interpolation
   
   // return magenta for invalid level
-  return Color(1,0,1,1);
+    if (level < 0 || level > kMaxMipLevels) return Color(255, 0, 255);
+
+    MipLevel& miplevel = tex.mipmap[level];
+    int U = round(u * miplevel.width);//Àƒ…·ŒÂ»Î
+    int V = round(v * miplevel.height);
+    Color color;
+    color.r = miplevel.texels[4 * (U + V * miplevel.width)];
+    color.g = miplevel.texels[1 + 4 * (U + V * miplevel.width)];
+    color.b = miplevel.texels[2 + 4 * (U + V * miplevel.width)];
+    color.a = miplevel.texels[3 + 4 * (U + V * miplevel.width)];
+    return color;
 
 }
 
@@ -96,7 +106,38 @@ Color Sampler2DImp::sample_bilinear(Texture& tex,
   // Task 6: Implement bilinear filtering
 
   // return magenta for invalid level
-  return Color(1,0,1,1);
+    if (level < 0 || level > kMaxMipLevels) return Color(255, 0, 255);
+
+    MipLevel& miplevel = tex.mipmap[level];
+    float U = u * miplevel.width;
+    float V = v * miplevel.height;
+    int i = floor(U - 0.5);
+    int j = floor(V - 0.5);
+    float s = U - (i + 0.5);
+    float t = V - (j + 0.5);
+    Color f00(miplevel.texels[4 * (i + j * miplevel.width)],
+        miplevel.texels[1 + 4 * (i + j * miplevel.width)],
+        miplevel.texels[2 + 4 * (i + j * miplevel.width)],
+        miplevel.texels[3 + 4 * (i + j * miplevel.width)]);
+    Color f01(miplevel.texels[4 * (i + (j + 1) * miplevel.width)],
+        miplevel.texels[1 + 4 * (i + (j + 1) * miplevel.width)],
+        miplevel.texels[2 + 4 * (i + (j + 1) * miplevel.width)],
+        miplevel.texels[3 + 4 * (i + (j + 1) * miplevel.width)]);
+    Color f11(miplevel.texels[4 * ((i + 1) + (j + 1) * miplevel.width)],
+        miplevel.texels[1 + 4 * ((i + 1) + (j + 1) * miplevel.width)],
+        miplevel.texels[2 + 4 * ((i + 1) + (j + 1) * miplevel.width)],
+        miplevel.texels[3 + 4 * ((i + 1) + (j - 1) * miplevel.width)]);
+    Color f10(miplevel.texels[4 * ((i + 1) + j * miplevel.width)],
+        miplevel.texels[1 + 4 * ((i + 1) + j * miplevel.width)],
+        miplevel.texels[2 + 4 * ((i + 1) + j * miplevel.width)],
+        miplevel.texels[3 + 4 * ((i + 1) + j * miplevel.width)]);
+
+    Color color;
+    color.r = (1.0 - t) * ((1.0 - s) * f00.r + s * f10.r) + t * ((1.0 - s) * f01.r + s * f11.r);
+    color.g = (1.0 - t) * ((1.0 - s) * f00.g + s * f10.g) + t * ((1.0 - s) * f01.g + s * f11.g);
+    color.b = (1.0 - t) * ((1.0 - s) * f00.b + s * f10.b) + t * ((1.0 - s) * f01.b + s * f11.b);
+    color.a = (1.0 - t) * ((1.0 - s) * f00.a + s * f10.a) + t * ((1.0 - s) * f01.a + s * f11.a);
+    return color;
 
 }
 

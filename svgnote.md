@@ -68,15 +68,15 @@
   - ```c++
     Matrix3x3 m = Matrix3x3::identity();
     
-      //设置平移(向右下)，0.5是移动一半，让center位于中心
-      m(0, 2) = 0.5 * (vspan - centerX) / vspan;
-      m(1, 2) = 0.5 * (vspan - centerY) / vspan;
+      //设置平移(向右下)，先做缩放，再平移到中心
+      m(0, 2) = (vspan - centerX) / (2.0 * vspan);
+      m(1, 2) = (vspan - centerY) / (2.0 * vspan);
+       
+      //设置缩放，缩小 vspan*2 倍，即以vspan为边界值
+      m(0, 0) = 1.0 / (2.0 * vspan);
+      m(1, 1) = 1.0 / (2.0 * vspan);
     
-      //设置缩放，缩小 vspan*2 倍，[0,0.5]之间
-      m(0, 0) = 0.5 / vspan;
-      m(1, 1) = 0.5 / vspan;
-    
-      set_svg_2_norm(m);
+      set_svg_2_norm(m);//先缩放，再平移
     ```
 
   - 
@@ -87,9 +87,16 @@
   - 对svg中坐标u应用： `u` = `tansformation` * `u`
   - 所以变换矩阵是从**最右边开始应用**的
 
+# Task 6 : Drawing Scaled Images
 
-
-
+- 这个任务是应用纹理映射，把texture插值显示到屏幕上
+- 步骤
+  - 首先遍历绘制区域的所有像素点，计算每个点的uv值 [0, 1]
+  - 然后取texure里第0级的mipmap，把uv值映射到纹理坐标下
+  - 使用插值算法 最近邻/双线性 得到texture上的color
+    - 最近邻：取里UV点最近的纹理像素
+    - 双线性，取四周的四个纹理像素做双线性插值
+  - 把color应用到像素上
 
 
 

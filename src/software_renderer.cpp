@@ -531,6 +531,37 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
                                            Texture& tex ) {
   // Task 6: 
   // Implement image rasterization
+    cout << tex.mipmap[0].height << " " << tex.mipmap[0].width <<" " << tex.mipmap[0].texels.size() << endl;
+    printf("×ø±ê %f, %f  %f, %f\n", x0, y0, x1, y1);
+    int sx0 = (int)round(x0);
+    int sy0 = (int)round(y0);
+    int sx1 = (int)ceil(x1);
+    int sy1 = (int)ceil(y1);
+
+    // ¼ì²é·¶Î§
+    if (sx0 < 0 || sx0 >= target_w) return;
+    if (sy0 < 0 || sy0 >= target_h) return;
+    if (sx1 < 0 || sx1 >= target_w) return;
+    if (sy1 < 0 || sy1 >= target_h) return;
+    
+    int w = sx1 - sx0 + 1;
+    int h = sy1 - sy0 + 1;
+
+    Sampler2DImp* sampler2d = new Sampler2DImp;
+
+    for (int i = sy0; i < sy1; i++) {
+        for (int j = sx0; j < sx1; j++) {
+            //Ó³Éäµ½[0,1]
+            float u = (j + 0.5 - sx0) / w; 
+            float v = (i + 0.5 - sy0) / h;
+            //Color color = sampler2d->sample_nearest(tex, u, v, 0);
+            Color color = sampler2d->sample_bilinear(tex, u, v, 0);
+            render_target[4 * (j + i * target_w)] = color.r;
+            render_target[4 * (j + i * target_w) + 1] = color.g;
+            render_target[4 * (j + i * target_w) + 2] = color.b;
+            render_target[4 * (j + i * target_w) + 3] = color.a;
+        }
+    }
 
 }
 
