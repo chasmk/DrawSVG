@@ -23,15 +23,15 @@ void ViewportImp::set_viewbox( float centerX, float centerY, float vspan ) {
 
   Matrix3x3 m = Matrix3x3::identity();
 
-  //设置平移(向右下)，0.5是移动一半，让center位于中心
-  m(0, 2) = 0.5 * (vspan - centerX) / vspan;
-  m(1, 2) = 0.5 * (vspan - centerY) / vspan;
+  //设置平移(向右下)，先做缩放，再平移到中心
+  m(0, 2) = (vspan - centerX) / (2.0 * vspan);
+  m(1, 2) = (vspan - centerY) / (2.0 * vspan);
+   
+  //设置缩放，缩小 vspan*2 倍，即以vspan为边界值
+  m(0, 0) = 1.0 / (2.0 * vspan);
+  m(1, 1) = 1.0 / (2.0 * vspan);
 
-  //设置缩放，缩小 vspan*2 倍，[0,0.5]之间
-  m(0, 0) = 0.5 / vspan;
-  m(1, 1) = 0.5 / vspan;
-
-  set_svg_2_norm(m);
+  set_svg_2_norm(m);//先缩放，再平移
 }
 
 void ViewportImp::update_viewbox( float dx, float dy, float scale ) { 
