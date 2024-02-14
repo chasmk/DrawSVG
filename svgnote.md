@@ -98,9 +98,9 @@
     - 双线性，取四周的四个纹理像素做双线性插值
   - 把color应用到像素上
 
+# Task 7 :Anti-Aliasing Image Elements Using Trilinear Filtering
 
-
-
+- 这个任务需要实现生成mipmap和三线过滤
 
 
 

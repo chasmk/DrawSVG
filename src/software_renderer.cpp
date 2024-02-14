@@ -549,6 +549,8 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
 
     Sampler2DImp* sampler2d = new Sampler2DImp;
 
+    int level = target_w / (x1 - x0);
+
     for (int i = sy0; i < sy1; i++) {
         for (int j = sx0; j < sx1; j++) {
             //ӳ�䵽[0,1]
@@ -556,13 +558,14 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
             float v = (i + 0.5 - sy0) / h;
             //Color color = sampler2d->sample_nearest(tex, u, v, 0);
             Color color = sampler2d->sample_bilinear(tex, u, v, 0);
+            //Color color = sampler2d->sample_trilinear(tex, u, v, target_w / (x1-x0)-1, target_h / (y1-y0)-1);
             render_target[4 * (j + i * target_w)] = color.r;
             render_target[4 * (j + i * target_w) + 1] = color.g;
             render_target[4 * (j + i * target_w) + 2] = color.b;
             render_target[4 * (j + i * target_w) + 3] = color.a;
         }
     }
-
+    cout << "w h" << target_w << " " << target_h << endl;
 }
 
 // resolve samples to render target

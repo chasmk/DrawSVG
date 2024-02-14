@@ -50,7 +50,7 @@ void Sampler2DImp::generate_mips(Texture& tex, int startLevel) {
 
   int width  = baseWidth;
   int height = baseHeight;
-  for (int i = 1; i <= numSubLevels; i++) {
+  for (int i = 1; i <= numSubLevels; i++) {//为每个level开辟空间，每次wh除2
 
     MipLevel& level = tex.mipmap[startLevel + i];
 
@@ -64,15 +64,34 @@ void Sampler2DImp::generate_mips(Texture& tex, int startLevel) {
 
   }
 
-  // fill all 0 sub levels with interchanging colors (JUST AS A PLACEHOLDER)
-  Color colors[3] = { Color(1,0,0,1), Color(0,1,0,1), Color(0,0,1,1) };
-  for(size_t i = 1; i < tex.mipmap.size(); ++i) {
-
-    Color c = colors[i % 3];
+  for(size_t i = 1; i < tex.mipmap.size(); ++i) {//遍历每个mipmap，填充像素
+       
+    
     MipLevel& mip = tex.mipmap[i];
 
-    for(size_t i = 0; i < 4 * mip.width * mip.height; i += 4) {
-      float_to_uint8( &mip.texels[i], &c.r );
+    int stepx = baseWidth / mip.width;
+    int stepy = baseHeight / mip.height;
+    
+    for (int i = 0; i < mip.height; i++) {
+        for (int j = 0; j < mip.width; j++) {
+            Color color;
+            for (int y = 0; y < stepy; y++) {
+                for (int x = 0; x < stepx; x++) {
+                    color.r += tex.mipmap[startLevel].texels[((i * stepx + y) * baseWidth + j * stepy + x) * 4];
+                    color.g += tex.mipmap[startLevel].texels[((i * stepx + y) * baseWidth + j * stepy + x) * 4 + 1];
+                    color.b += tex.mipmap[startLevel].texels[((i * stepx + y) * baseWidth + j * stepy + x) * 4 + 2];
+                    color.a += tex.mipmap[startLevel].texels[((i * stepx + y) * baseWidth + j * stepy + x) * 4 + 3];
+                }
+            }
+            color.r /= stepx * stepy;
+            color.g /= stepx * stepy;
+            color.b /= stepx * stepy;
+            color.a /= stepx * stepy;
+            mip.texels[(i * mip.width + j) * 4] = color.r;
+            mip.texels[(i * mip.width + j) * 4 + 1] = color.g;
+            mip.texels[(i * mip.width + j) * 4 + 2] = color.b;
+            mip.texels[(i * mip.width + j) * 4 + 3] = color.a;
+        }
     }
   }
 
@@ -133,10 +152,7 @@ Color Sampler2DImp::sample_bilinear(Texture& tex,
         miplevel.texels[3 + 4 * ((i + 1) + j * miplevel.width)]);
 
     Color color;
-    color.r = (1.0 - t) * ((1.0 - s) * f00.r + s * f10.r) + t * ((1.0 - s) * f01.r + s * f11.r);
-    color.g = (1.0 - t) * ((1.0 - s) * f00.g + s * f10.g) + t * ((1.0 - s) * f01.g + s * f11.g);
-    color.b = (1.0 - t) * ((1.0 - s) * f00.b + s * f10.b) + t * ((1.0 - s) * f01.b + s * f11.b);
-    color.a = (1.0 - t) * ((1.0 - s) * f00.a + s * f10.a) + t * ((1.0 - s) * f01.a + s * f11.a);
+    color = (1.0 - t) * ((1.0 - s) * f00 + s * f10) + t * ((1.0 - s) * f01 + s * f11);
     return color;
 
 }
@@ -144,12 +160,74 @@ Color Sampler2DImp::sample_bilinear(Texture& tex,
 Color Sampler2DImp::sample_trilinear(Texture& tex, 
                                      float u, float v, 
                                      float u_scale, float v_scale) {
-
+     
   // Task 7: Implement trilinear filtering
 
   // return magenta for invalid level
-  return Color(1,0,1,1);
+    int level1 = floor(u_scale);
+    int level2 = ceil(u_scale);
+    if (level1 < 0 || level2 > kMaxMipLevels) return Color(255, 0, 255);
+    
+    MipLevel& miplevel = tex.mipmap[level1];
+    float U = u * miplevel.width;
+    float V = v * miplevel.height;
+    int i = floor(U - 0.5);
+    int j = floor(V - 0.5);
+    float s = U - (i + 0.5);
+    float t = V - (j + 0.5);
+    Color f000(miplevel.texels[4 * (i + j * miplevel.width)],
+        miplevel.texels[1 + 4 * (i + j * miplevel.width)],
+        miplevel.texels[2 + 4 * (i + j * miplevel.width)],
+        miplevel.texels[3 + 4 * (i + j * miplevel.width)]);
+    Color f010(miplevel.texels[4 * (i + (j + 1) * miplevel.width)],
+        miplevel.texels[1 + 4 * (i + (j + 1) * miplevel.width)],
+        miplevel.texels[2 + 4 * (i + (j + 1) * miplevel.width)],
+        miplevel.texels[3 + 4 * (i + (j + 1) * miplevel.width)]);
+    Color f110(miplevel.texels[4 * ((i + 1) + (j + 1) * miplevel.width)],
+        miplevel.texels[1 + 4 * ((i + 1) + (j + 1) * miplevel.width)],
+        miplevel.texels[2 + 4 * ((i + 1) + (j + 1) * miplevel.width)],
+        miplevel.texels[3 + 4 * ((i + 1) + (j - 1) * miplevel.width)]);
+    Color f100(miplevel.texels[4 * ((i + 1) + j * miplevel.width)],
+        miplevel.texels[1 + 4 * ((i + 1) + j * miplevel.width)],
+        miplevel.texels[2 + 4 * ((i + 1) + j * miplevel.width)],
+        miplevel.texels[3 + 4 * ((i + 1) + j * miplevel.width)]);
 
+    Color g00, g10, h0;
+    g00 = s * f100 + (1.0 - s) * f000;
+    g10 = s * f110 + (1.0 - s) * f010;
+    h0 = t * g10 + (1.0 - t) * g00;
+
+    MipLevel& miplevel1 = tex.mipmap[level2];
+    U = u * miplevel1.width;
+    V = v * miplevel1.height;
+    i = floor(U - 0.5);
+    j = floor(V - 0.5);
+    s = U - (i + 0.5);
+    t = V - (j + 0.5);
+    Color f001(miplevel1.texels[4 * (i + j * miplevel1.width)],
+        miplevel1.texels[1 + 4 * (i + j * miplevel1.width)],
+        miplevel1.texels[2 + 4 * (i + j * miplevel1.width)],
+        miplevel1.texels[3 + 4 * (i + j * miplevel1.width)]);
+    Color f011(miplevel1.texels[4 * (i + (j + 1) * miplevel1.width)],
+        miplevel1.texels[1 + 4 * (i + (j + 1) * miplevel1.width)],
+        miplevel1.texels[2 + 4 * (i + (j + 1) * miplevel1.width)],
+        miplevel1.texels[3 + 4 * (i + (j + 1) * miplevel1.width)]);
+    Color f111(miplevel1.texels[4 * ((i + 1) + (j + 1) * miplevel1.width)],
+        miplevel1.texels[1 + 4 * ((i + 1) + (j + 1) * miplevel1.width)],
+        miplevel1.texels[2 + 4 * ((i + 1) + (j + 1) * miplevel1.width)],
+        miplevel1.texels[3 + 4 * ((i + 1) + (j - 1) * miplevel1.width)]);
+    Color f101(miplevel1.texels[4 * ((i + 1) + j * miplevel1.width)],
+        miplevel1.texels[1 + 4 * ((i + 1) + j * miplevel1.width)],
+        miplevel1.texels[2 + 4 * ((i + 1) + j * miplevel1.width)],
+        miplevel1.texels[3 + 4 * ((i + 1) + j * miplevel1.width)]);
+
+    Color g01, g11, h1;
+    g01 = s * f101 + (1.0 - s) * f001;
+    g11 = s * f111 + (1.0 - s) * f011;
+    h1 = t * g11 + (1.0 - t) * g01;
+    
+    float w = u_scale - floor(u_scale);
+    return w * h1 + (1.0 - w) * h0;
 }
 
 } // namespace CMU462
