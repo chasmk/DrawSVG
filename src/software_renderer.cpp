@@ -50,8 +50,9 @@ void SoftwareRendererImp::set_sample_rate( size_t sample_rate ) {
   //if (target_h == 0 || target_w == 0) return;
   this->sample_rate = sample_rate;
   delete[] this->supersample_target;
-  //cout << "set_sample_rate()\n";
+  //cout << "set_sample_rate() " << sample_rate << endl;
   this->supersample_target = new unsigned char[4 * target_w * target_h * sample_rate * sample_rate];
+  //memset(this->supersample_target, 255, 4 * target_w * target_h * sample_rate * sample_rate);
 }
 
 void SoftwareRendererImp::set_render_target( unsigned char* render_target,
@@ -411,11 +412,28 @@ void SoftwareRendererImp::rasterize_line_supersample(float x0, float y0,
 
     int ystep = y0 < y1 ? 1 : -1;//y增长的步长
 
+    // 实现premultiplied alpha
+    Color PreMulcolor = color;
+    PreMulcolor.r *= color.a;
+    PreMulcolor.g *= color.a;
+    PreMulcolor.b *= color.a;
+
+
     for (; curx <= sx1; curx++) {
         //绘制当前点
         if (!isSteep) {
             for (int s = 0; s < sample_rate; s++) {//行
                 for (int t = 0; t < sample_rate; t++) {//列
+                    int idx = 4 * (curx * sample_rate + t + (cury * sample_rate + s) * target_w * sample_rate);
+                    float canvas_alpha = supersample_target[idx + 3] / 255.0;
+                    color.a = 1 - (1 - PreMulcolor.a) * (1 - supersample_target[idx + 3] / 255.0);
+                    color.r = (1 - PreMulcolor.a) * (supersample_target[idx] / 255.0) * canvas_alpha + PreMulcolor.r;
+                    color.g = (1 - PreMulcolor.a) * (supersample_target[idx + 1] / 255.0) * canvas_alpha + PreMulcolor.g;
+                    color.b = (1 - PreMulcolor.a) * (supersample_target[idx + 2] / 255.0) * canvas_alpha + PreMulcolor.b;
+                    color.r = color.r / color.a;
+                    color.g = color.g / color.a;
+                    color.b = color.b / color.a;
+
                     supersample_target[4 * (curx * sample_rate + t + (cury * sample_rate + s) * target_w * sample_rate)] = (uint8_t)(color.r * 255);
                     supersample_target[4 * (curx * sample_rate + t + (cury * sample_rate + s) * target_w * sample_rate) + 1] = (uint8_t)(color.g * 255);
                     supersample_target[4 * (curx * sample_rate + t + (cury * sample_rate + s) * target_w * sample_rate) + 2] = (uint8_t)(color.b * 255);
@@ -426,6 +444,16 @@ void SoftwareRendererImp::rasterize_line_supersample(float x0, float y0,
         else {
             for (int s = 0; s < sample_rate; s++) {//行
                 for (int t = 0; t < sample_rate; t++) {//列
+                    int idx = 4 * (cury * sample_rate + t + (curx * sample_rate + s) * target_w * sample_rate);
+                    float canvas_alpha = supersample_target[idx + 3] / 255.0;
+                    color.a = 1 - (1 - PreMulcolor.a) * (1 - supersample_target[idx + 3] / 255.0);
+                    color.r = (1 - PreMulcolor.a) * (supersample_target[idx] / 255.0) * canvas_alpha + PreMulcolor.r;
+                    color.g = (1 - PreMulcolor.a) * (supersample_target[idx + 1] / 255.0) * canvas_alpha + PreMulcolor.g;
+                    color.b = (1 - PreMulcolor.a) * (supersample_target[idx + 2] / 255.0) * canvas_alpha + PreMulcolor.b;
+                    color.r = color.r / color.a;
+                    color.g = color.g / color.a;
+                    color.b = color.b / color.a;
+
                     supersample_target[4 * (cury * sample_rate + t + (curx * sample_rate + s) * target_w * sample_rate)] = (uint8_t)(color.r * 255);
                     supersample_target[4 * (cury * sample_rate + t + (curx * sample_rate + s) * target_w * sample_rate) + 1] = (uint8_t)(color.g * 255);
                     supersample_target[4 * (cury * sample_rate + t + (curx * sample_rate + s) * target_w * sample_rate) + 2] = (uint8_t)(color.b * 255);
@@ -497,6 +525,12 @@ void SoftwareRendererImp::rasterize_triangle_supersample(float x0, float y0,
     int maxx = ceil(max(x0, max(x1, x2)));
     int maxy = ceil(max(y0, max(y1, y2)));
 
+    // 实现premultiplied alpha
+    Color PreMulcolor = color;
+    PreMulcolor.r *= color.a;
+    PreMulcolor.g *= color.a;
+    PreMulcolor.b *= color.a;
+
     float step = 1.0 / sample_rate;//遍历的步长
     float sstep = step / 2.0;//得到采样点位置的距离，
     for (int si = miny*sample_rate; si < maxy * sample_rate; si += 1) {//遍历所有超采样点的超采样坐标
@@ -517,6 +551,16 @@ void SoftwareRendererImp::rasterize_triangle_supersample(float x0, float y0,
             double res3 = cross(v20, v2t);
 
             if (res1 >= 0 && res2 >= 0 && res3 >= 0 || res1 <= 0 && res2 <= 0 && res3 <= 0) {
+                /**/int idx = 4 * (sj + si * target_w * sample_rate);
+                float canvas_alpha = supersample_target[idx + 3] / 255.0;
+                color.a = 1 - (1 - PreMulcolor.a) * (1 - supersample_target[idx + 3] / 255.0);
+                color.r = (1 - PreMulcolor.a) * (supersample_target[idx] / 255.0) * canvas_alpha + PreMulcolor.r;
+                color.g = (1 - PreMulcolor.a) * (supersample_target[idx + 1] / 255.0) * canvas_alpha + PreMulcolor.g;
+                color.b = (1 - PreMulcolor.a) * (supersample_target[idx + 2] / 255.0) * canvas_alpha + PreMulcolor.b;
+                color.r = color.r / color.a;
+                color.g = color.g / color.a;
+                color.b = color.b / color.a;
+
                 supersample_target[4 * (sj + si * target_w * sample_rate)] = (uint8_t)(color.r * 255);
                 supersample_target[4 * (sj + si * target_w * sample_rate) + 1] = (uint8_t)(color.g * 255);
                 supersample_target[4 * (sj + si * target_w * sample_rate) + 2] = (uint8_t)(color.b * 255);
@@ -531,8 +575,8 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
                                            Texture& tex ) {
   // Task 6: 
   // Implement image rasterization
-    cout << tex.mipmap[0].height << " " << tex.mipmap[0].width <<" " << tex.mipmap[0].texels.size() << endl;
-    printf("坐标 %f, %f  %f, %f\n", x0, y0, x1, y1);
+    //cout << tex.mipmap[0].height << " " << tex.mipmap[0].width <<" " << tex.mipmap[0].texels.size() << endl;
+    //printf("坐标 %f, %f  %f, %f\n", x0, y0, x1, y1);
     int sx0 = (int)round(x0);
     int sy0 = (int)round(y0);
     int sx1 = (int)ceil(x1);
@@ -565,7 +609,7 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
             render_target[4 * (j + i * target_w) + 3] = color.a;
         }
     }
-    cout << "w h" << target_w << " " << target_h << endl;
+    //cout << "w h" << target_w << " " << target_h << endl;
 }
 
 // resolve samples to render target
@@ -600,7 +644,7 @@ void SoftwareRendererImp::resolve( void ) {
             render_target[4 * (j + i * target_w) + 3] = (uint8_t)(color.a);
         }
     }
-    cout << "w&h " << target_w << " " << target_h << endl;
+    //cout << "w&h " << target_w << " " << target_h << endl;
 
 }
 

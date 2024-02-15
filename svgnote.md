@@ -104,7 +104,10 @@
 
 
 
+# Task 8: Alpha Compositing
 
+- 这个任务实现premultiplied alpha，因为每个像素都有rgba四个值，这个任务加入了alpha
+- 按公式实现即可
 
 
 

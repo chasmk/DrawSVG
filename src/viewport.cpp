@@ -19,7 +19,7 @@ void ViewportImp::set_viewbox( float centerX, float centerY, float vspan ) {
     m½« (centerX, centerY + vspan) ±ä³É (0.5, 1.0)
     */
 
-  std::cout << "set_viewbox() " << centerX << " " << centerY << " " << vspan << "\n";
+  //std::cout << "set_viewbox() " << centerX << " " << centerY << " " << vspan << "\n";
 
   Matrix3x3 m = Matrix3x3::identity();
 
